@@ -31,7 +31,7 @@ func (h *ProductsHandler) CreateProducts(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 
-	newProduct, err := h.App.DB.CreateProduct(c.Request.Context(), database.CreateProductParams{
+	newProduct, err := h.App.DBqueries.CreateProduct(c.Request.Context(), database.CreateProductParams{
 		Name:     productsDetail.Name,
 		Price:    productsDetail.Price,
 		Category: productsDetail.Category,
@@ -52,7 +52,7 @@ func (h *ProductsHandler) CreateProducts(c *gin.Context) {
 
 func (h *ProductsHandler) GetAllProducts(c *gin.Context) {
 
-	getProducts, err := h.App.DB.GetAllProduct(c.Request.Context())
+	getProducts, err := h.App.DBqueries.GetAllProduct(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
@@ -84,7 +84,7 @@ func (h *ProductsHandler) GetProducts(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 
-	getProduct, err := h.App.DB.GetProduct(c.Request.Context(), productID)
+	getProduct, err := h.App.DBqueries.GetProduct(c.Request.Context(), productID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}

@@ -11,6 +11,25 @@ import (
 	"github.com/google/uuid"
 )
 
+type Order struct {
+	ID         uuid.UUID
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	UserID     uuid.UUID
+	Status     string
+	TotalItems int32
+}
+
+type OrderItem struct {
+	ID        uuid.UUID
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	ProductID uuid.UUID
+	OrderID   uuid.UUID
+	Quantity  int32
+	Price     int32
+}
+
 type Product struct {
 	ID        uuid.UUID
 	CreatedAt time.Time

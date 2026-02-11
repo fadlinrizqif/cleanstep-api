@@ -39,7 +39,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		return
 	}
 
-	users, err := h.App.DB.CreateUser(c.Request.Context(), database.CreateUserParams{
+	users, err := h.App.DBqueries.CreateUser(c.Request.Context(), database.CreateUserParams{
 		Name:           userDetail.Name,
 		Email:          userDetail.Email,
 		HashedPassword: hashedPassword,
@@ -73,7 +73,7 @@ func (h *UserHandler) LoginUser(c *gin.Context) {
 		return
 	}
 
-	getUser, err := h.App.DB.GetUser(c.Request.Context(), LoginDetail.Email)
+	getUser, err := h.App.DBqueries.GetUser(c.Request.Context(), LoginDetail.Email)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -96,7 +96,7 @@ func (h *UserHandler) LoginUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 
-	_, err = h.App.DB.CreateRefreshToken(c.Request.Context(), database.CreateRefreshTokenParams{
+	_, err = h.App.DBqueries.CreateRefreshToken(c.Request.Context(), database.CreateRefreshTokenParams{
 		Token:     getRefreshToken,
 		UserID:    getUser.ID,
 		ExpiresAt: time.Now().AddDate(0, 0, 60),

@@ -1,8 +1,13 @@
 package app
 
-import "github.com/fadlinrizqif/cleanstep-api/internal/database"
+import (
+	"database/sql"
+
+	"github.com/fadlinrizqif/cleanstep-api/internal/database"
+)
 
 type App struct {
-	DB          *database.Queries
+	DB          *sql.DB
+	DBqueries   *database.Queries
 	SeverSecret string
 }

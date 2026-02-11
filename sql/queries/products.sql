@@ -17,6 +17,9 @@ SELECT * FROM products WHERE id = $1;
 -- name: GetAllProduct :many
 SELECT * FROM products ORDER BY created_at ASC;
 
+-- name: GetAllPrice :many
+SELECT id, price, stock, name FROM products ORDER BY created_at ASC;
+
 -- name: UpdateProduct :one
 UPDATE products
 SET stock = stock - $1 

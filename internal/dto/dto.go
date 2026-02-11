@@ -38,3 +38,10 @@ type GetProductResponse struct {
 	Data  []ProductResponse `json:"data"`
 	Total int32             `json:"total"`
 }
+
+type OrderResponse struct {
+	ID        uuid.UUID `json:"id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Status    string    `json:"status"`
+	TotalItem int32     `json:"total_item"`
+}

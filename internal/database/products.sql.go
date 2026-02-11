@@ -52,6 +52,45 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 	return i, err
 }
 
+const getAllPrice = `-- name: GetAllPrice :many
+SELECT id, price, stock, name FROM products ORDER BY created_at ASC
+`
+
+type GetAllPriceRow struct {
+	ID    uuid.UUID
+	Price int32
+	Stock int32
+	Name  string
+}
+
+func (q *Queries) GetAllPrice(ctx context.Context) ([]GetAllPriceRow, error) {
+	rows, err := q.db.QueryContext(ctx, getAllPrice)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllPriceRow
+	for rows.Next() {
+		var i GetAllPriceRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Price,
+			&i.Stock,
+			&i.Name,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getAllProduct = `-- name: GetAllProduct :many
 SELECT id, created_at, updated_at, name, price, category, stock FROM products ORDER BY created_at ASC
 `

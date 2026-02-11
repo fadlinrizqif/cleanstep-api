@@ -28,7 +28,8 @@ func main() {
 
 	dbQueries := database.New(db)
 	config := app.App{
-		DB:          dbQueries,
+		DB:          db,
+		DBqueries:   dbQueries,
 		SeverSecret: serverSecret,
 	}
 

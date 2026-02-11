@@ -3,6 +3,9 @@ package auth
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/alexedwards/argon2id"
@@ -80,4 +83,20 @@ func MakeRefreshToken() (string, error) {
 
 	return hex.EncodeToString(key), nil
 
+}
+
+func GetBearerToken(headers http.Header) (string, error) {
+	rawtoken := headers.Get("Authorization")
+	if rawtoken == "" {
+		return "", errors.New("Token not found")
+	}
+
+	const prefix = "Bearer "
+	if !strings.HasPrefix(rawtoken, prefix) {
+		return "", errors.New("invalid authorization header")
+	}
+
+	sanitizeToken := strings.Replace(rawtoken, prefix, "", 1)
+
+	return sanitizeToken, nil
 }
