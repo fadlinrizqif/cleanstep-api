@@ -35,13 +35,17 @@ func main() {
 
 	userHandler := handlers.NewUserHandler(&config)
 	productHandler := handlers.NewProductsHandler(&config)
+	orderHandler := handlers.NewOrdersHandler(&config)
 
 	router.POST("/api/signup", userHandler.CreateUser)
 	router.POST("/api/login", userHandler.LoginUser)
-	router.POST("/api/admin/products", productHandler.CreateProducts)
 
+	router.POST("/api/admin/products", productHandler.CreateProducts)
 	router.GET("/api/products", productHandler.GetAllProducts)
 	router.GET("/api/products/{productID}", productHandler.GetProducts)
+	router.POST("/api/products/bulk", productHandler.CreateMassProducts)
+
+	router.POST("/api/orders", orderHandler.CreateOrders)
 
 	router.Run(":8080")
 }

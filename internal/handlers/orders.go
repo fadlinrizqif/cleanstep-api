@@ -19,7 +19,7 @@ func NewOrdersHandler(app *app.App) *OrdersHandler {
 	return &OrdersHandler{App: app}
 }
 
-func (h *ProductsHandler) CreateOrders(c *gin.Context) {
+func (h *OrdersHandler) CreateOrders(c *gin.Context) {
 	type OrderDetail struct {
 		ProductID uuid.UUID `json:"product_id"`
 		Quantity  int32     `json:"quantity"`
@@ -32,17 +32,20 @@ func (h *ProductsHandler) CreateOrders(c *gin.Context) {
 
 	var orderParams Params
 
+	// Bind json to the struct
 	if err := c.BindJSON(&orderParams); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	// begin transaction
 	tx, err := h.App.DB.Begin()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	//rollback if there is something wrong
 	defer tx.Rollback()
 
 	qtx := h.App.DBqueries.WithTx(tx)
@@ -50,6 +53,7 @@ func (h *ProductsHandler) CreateOrders(c *gin.Context) {
 	var totalPrice int32
 
 	for _, item := range orderParams.OrderItems {
+		//decrease the stock from db
 		product, err := qtx.UpdateProduct(c.Request.Context(), database.UpdateProductParams{
 			ID:    item.ProductID,
 			Stock: item.Quantity,
@@ -62,10 +66,12 @@ func (h *ProductsHandler) CreateOrders(c *gin.Context) {
 			return
 		}
 
+		//sum up the price of each product's price times with order's quantity
 		totalPrice += product.Price * item.Quantity
 
 	}
 
+	//make order the order to db
 	newOrder, err := qtx.CreateOrder(c.Request.Context(), database.CreateOrderParams{
 		UserID:     orderParams.UserID,
 		Status:     "PENDING",
@@ -79,6 +85,7 @@ func (h *ProductsHandler) CreateOrders(c *gin.Context) {
 
 	for _, item := range orderParams.OrderItems {
 
+		//store each item to the db with foreign from order
 		_, err = qtx.CreateOrderItems(c.Request.Context(), database.CreateOrderItemsParams{
 			ProductID: item.ProductID,
 			OrderID:   newOrder.ID,
@@ -91,11 +98,13 @@ func (h *ProductsHandler) CreateOrders(c *gin.Context) {
 
 	}
 
+	//if there is no error the change to the database saved
 	if err := tx.Commit(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
+	//send respond to the frontend
 	c.JSON(http.StatusOK, dto.OrderResponse{
 		ID:        newOrder.ID,
 		UserID:    orderParams.UserID,

@@ -12,7 +12,7 @@ import (
 )
 
 const createProduct = `-- name: CreateProduct :one
-INSERT INTO products (id, created_at, updated_at, name, price, category, stock)
+INSERT INTO products (id, created_at, updated_at, name, price, category, stock, description)
 VALUES(
   gen_random_uuid(),
   NOW(),
@@ -20,16 +20,18 @@ VALUES(
   $1,
   $2,
   $3,
-  $4
+  $4,
+  $5
 )
-RETURNING id, created_at, updated_at, name, price, category, stock
+RETURNING id, created_at, updated_at, name, price, category, stock, description
 `
 
 type CreateProductParams struct {
-	Name     string
-	Price    int32
-	Category string
-	Stock    int32
+	Name        string
+	Price       int32
+	Category    string
+	Stock       int32
+	Description string
 }
 
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (Product, error) {
@@ -38,6 +40,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		arg.Price,
 		arg.Category,
 		arg.Stock,
+		arg.Description,
 	)
 	var i Product
 	err := row.Scan(
@@ -48,6 +51,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		&i.Price,
 		&i.Category,
 		&i.Stock,
+		&i.Description,
 	)
 	return i, err
 }
@@ -92,11 +96,29 @@ func (q *Queries) GetAllPrice(ctx context.Context) ([]GetAllPriceRow, error) {
 }
 
 const getAllProduct = `-- name: GetAllProduct :many
-SELECT id, created_at, updated_at, name, price, category, stock FROM products ORDER BY created_at ASC
+SELECT id, created_at, updated_at, name, price, category, stock, description FROM products
+WHERE 
+  (name ILIKE '%' || $1::text || '%' OR $1::text = '') 
+  AND (category = $2::text OR $2::text ='')
+ORDER BY created_at ASC
+LIMIT $4::int
+OFFSET $3::int
 `
 
-func (q *Queries) GetAllProduct(ctx context.Context) ([]Product, error) {
-	rows, err := q.db.QueryContext(ctx, getAllProduct)
+type GetAllProductParams struct {
+	Name      string
+	Category  string
+	OffsetVal int32
+	LimitVal  int32
+}
+
+func (q *Queries) GetAllProduct(ctx context.Context, arg GetAllProductParams) ([]Product, error) {
+	rows, err := q.db.QueryContext(ctx, getAllProduct,
+		arg.Name,
+		arg.Category,
+		arg.OffsetVal,
+		arg.LimitVal,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -112,6 +134,7 @@ func (q *Queries) GetAllProduct(ctx context.Context) ([]Product, error) {
 			&i.Price,
 			&i.Category,
 			&i.Stock,
+			&i.Description,
 		); err != nil {
 			return nil, err
 		}
@@ -127,7 +150,7 @@ func (q *Queries) GetAllProduct(ctx context.Context) ([]Product, error) {
 }
 
 const getProduct = `-- name: GetProduct :one
-SELECT id, created_at, updated_at, name, price, category, stock FROM products WHERE id = $1
+SELECT id, created_at, updated_at, name, price, category, stock, description FROM products WHERE id = $1
 `
 
 func (q *Queries) GetProduct(ctx context.Context, id uuid.UUID) (Product, error) {
@@ -141,6 +164,7 @@ func (q *Queries) GetProduct(ctx context.Context, id uuid.UUID) (Product, error)
 		&i.Price,
 		&i.Category,
 		&i.Stock,
+		&i.Description,
 	)
 	return i, err
 }
@@ -150,7 +174,7 @@ UPDATE products
 SET stock = stock - $1 
 WHERE stock >= $1 
 AND id = $2
-RETURNING id, created_at, updated_at, name, price, category, stock
+RETURNING id, created_at, updated_at, name, price, category, stock, description
 `
 
 type UpdateProductParams struct {
@@ -169,6 +193,7 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (P
 		&i.Price,
 		&i.Category,
 		&i.Stock,
+		&i.Description,
 	)
 	return i, err
 }

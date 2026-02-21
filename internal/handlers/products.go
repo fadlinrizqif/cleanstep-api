@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/fadlinrizqif/cleanstep-api/internal/app"
 	"github.com/fadlinrizqif/cleanstep-api/internal/database"
@@ -20,10 +22,11 @@ func NewProductsHandler(app *app.App) *ProductsHandler {
 
 func (h *ProductsHandler) CreateProducts(c *gin.Context) {
 	type params struct {
-		Name     string `json:"name"`
-		Price    int32  `json:"price"`
-		Category string `json:"category"`
-		Stock    int32  `json:"stock"`
+		Name        string `json:"name"`
+		Price       int32  `json:"price"`
+		Category    string `json:"category"`
+		Stock       int32  `json:"stock"`
+		Description string `json:"description"`
 	}
 
 	var productsDetail params
@@ -32,10 +35,11 @@ func (h *ProductsHandler) CreateProducts(c *gin.Context) {
 	}
 
 	newProduct, err := h.App.DBqueries.CreateProduct(c.Request.Context(), database.CreateProductParams{
-		Name:     productsDetail.Name,
-		Price:    productsDetail.Price,
-		Category: productsDetail.Category,
-		Stock:    productsDetail.Stock,
+		Name:        productsDetail.Name,
+		Price:       productsDetail.Price,
+		Category:    productsDetail.Category,
+		Stock:       productsDetail.Stock,
+		Description: productsDetail.Description,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -50,9 +54,78 @@ func (h *ProductsHandler) CreateProducts(c *gin.Context) {
 	})
 }
 
-func (h *ProductsHandler) GetAllProducts(c *gin.Context) {
+func (h *ProductsHandler) CreateMassProducts(c *gin.Context) {
+	type prodoductsDetail struct {
+		Name        string `json:"name"`
+		Price       int32  `json:"price"`
+		Category    string `json:"category"`
+		Stock       int32  `json:"stock"`
+		Description string `json:"description"`
+	}
 
-	getProducts, err := h.App.DBqueries.GetAllProduct(c.Request.Context())
+	var productList []prodoductsDetail
+
+	if err := c.ShouldBindJSON(&productList); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Fatal(err)
+		return
+	}
+
+	tx, err := h.App.DB.Begin()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	defer tx.Rollback()
+
+	qtx := h.App.DBqueries.WithTx(tx)
+
+	for _, product := range productList {
+		category, err := validateCategory(product.Category)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		_, err = qtx.CreateProduct(c.Request.Context(), database.CreateProductParams{
+			Name:        product.Name,
+			Price:       product.Price,
+			Category:    category,
+			Stock:       product.Stock,
+			Description: product.Description,
+		})
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "something wrong in server"})
+			log.Fatal(err)
+			return
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"body": "the products have been stored"})
+}
+
+func (h *ProductsHandler) GetAllProducts(c *gin.Context) {
+	pageStr := c.DefaultQuery("page", "1")
+	limitStr := c.DefaultQuery("limit", "10")
+	searchName := c.Query("search")
+	category := c.Query("category")
+
+	page, _ := strconv.Atoi(pageStr)
+	limit, _ := strconv.Atoi(limitStr)
+
+	offset := (page - 1) * limit
+
+	getProducts, err := h.App.DBqueries.GetAllProduct(c.Request.Context(), database.GetAllProductParams{
+		Name:      searchName,
+		Category:  category,
+		LimitVal:  int32(limit),
+		OffsetVal: int32(offset),
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}

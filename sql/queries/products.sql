@@ -1,5 +1,5 @@
 -- name: CreateProduct :one
-INSERT INTO products (id, created_at, updated_at, name, price, category, stock)
+INSERT INTO products (id, created_at, updated_at, name, price, category, stock, description)
 VALUES(
   gen_random_uuid(),
   NOW(),
@@ -7,7 +7,8 @@ VALUES(
   $1,
   $2,
   $3,
-  $4
+  $4,
+  $5
 )
 RETURNING *;
 
@@ -15,7 +16,13 @@ RETURNING *;
 SELECT * FROM products WHERE id = $1;
 
 -- name: GetAllProduct :many
-SELECT * FROM products ORDER BY created_at ASC;
+SELECT * FROM products
+WHERE 
+  (name ILIKE '%' || @name::text || '%' OR @name::text = '') 
+  AND (category = @category::text OR @category::text ='')
+ORDER BY created_at ASC
+LIMIT @limit_val::int
+OFFSET @offset_val::int;
 
 -- name: GetAllPrice :many
 SELECT id, price, stock, name FROM products ORDER BY created_at ASC;
