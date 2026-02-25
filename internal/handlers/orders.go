@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 
 	"github.com/fadlinrizqif/cleanstep-api/internal/app"
@@ -20,13 +21,22 @@ func NewOrdersHandler(app *app.App) *OrdersHandler {
 }
 
 func (h *OrdersHandler) CreateOrders(c *gin.Context) {
+	val, ok := c.Get("getUserID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+	}
+
+	userID, err := uuid.Parse(fmt.Sprint(val))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Soemething wrong in server"})
+	}
+
 	type OrderDetail struct {
 		ProductID uuid.UUID `json:"product_id"`
 		Quantity  int32     `json:"quantity"`
 	}
 
 	type Params struct {
-		UserID     uuid.UUID     `json:"user_id"`
 		OrderItems []orderDetail `json:"order_detail"`
 	}
 
@@ -73,7 +83,7 @@ func (h *OrdersHandler) CreateOrders(c *gin.Context) {
 
 	//make order the order to db
 	newOrder, err := qtx.CreateOrder(c.Request.Context(), database.CreateOrderParams{
-		UserID:     orderParams.UserID,
+		UserID:     userID,
 		Status:     "PENDING",
 		TotalItems: totalPrice,
 	})
@@ -107,7 +117,7 @@ func (h *OrdersHandler) CreateOrders(c *gin.Context) {
 	//send respond to the frontend
 	c.JSON(http.StatusOK, dto.OrderResponse{
 		ID:        newOrder.ID,
-		UserID:    orderParams.UserID,
+		UserID:    userID,
 		Status:    newOrder.Status,
 		TotalItem: newOrder.TotalItems,
 	})
