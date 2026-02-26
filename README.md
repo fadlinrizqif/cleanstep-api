@@ -18,6 +18,7 @@ Cleanstep API adalah API berbasis RESTFul API yang berfungsi sebagai backend unt
 - Cookies Base Authentication
 
 ## Project Structure
+```text
 ├── internal
 │   ├── app           # api config struct
 │   ├── auth          # JWT & refresh token logic
@@ -28,6 +29,7 @@ Cleanstep API adalah API berbasis RESTFul API yang berfungsi sebagai backend unt
 └── sql
     ├── queries       # query to database 
     └── schema        # migration for database using Goose
+```
 
 ## Environment Variables
 | Variable | Description |
