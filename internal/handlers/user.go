@@ -105,13 +105,72 @@ func (h *UserHandler) LoginUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 
-	c.JSON(http.StatusOK, dto.LoginUser{
-		Token:        newJwt,
-		RefreshToken: getRefreshToken,
-		User: dto.UserDetail{
-			ID:    getUser.ID,
-			Name:  getUser.Name,
-			Email: getUser.Email,
-		},
+	secure := c.Request.TLS != nil
+
+	c.SetCookieData(&http.Cookie{
+		Name:     "access_token",
+		Value:    newJwt,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   60 * 60,
+	})
+
+	c.SetCookieData(&http.Cookie{
+		Name:     "refresh_token",
+		Value:    getRefreshToken,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   60 * 60 * 24 * 60,
+	})
+
+	c.JSON(http.StatusOK, gin.H{
+		"body": "login successfully",
+	})
+
+	//c.JSON(http.StatusOK, dto.LoginUser{
+	//	Token:        newJwt,
+	//	RefreshToken: getRefreshToken,
+	//	User: dto.UserDetail{
+	//		ID:    getUser.ID,
+	//		Name:  getUser.Name,
+	//		Email: getUser.Email,
+	//	},
+	//})
+}
+
+func (h *UserHandler) LogoutUser(c *gin.Context) {
+	refreshTOken, err := c.Cookie("refresh_token")
+	if err == nil {
+		_ = h.App.DBqueries.RevokeRefreshToken(c.Request.Context(), refreshTOken)
+	}
+
+	secure := c.Request.TLS != nil
+
+	c.SetCookieData(&http.Cookie{
+		Name:     "access_token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+
+	c.SetCookieData(&http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+
+	c.JSON(http.StatusOK, gin.H{
+		"body": "logout successfully",
 	})
 }
