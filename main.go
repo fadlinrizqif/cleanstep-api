@@ -46,9 +46,9 @@ func main() {
 	protected.Use(middlware.AuthMiddleware(config.SeverSecret))
 	{
 		protected.POST("/api/admin/products", productHandler.CreateProducts)
+		protected.POST("/api/admin/products/bulk", productHandler.CreateMassProducts)
 		protected.GET("/api/products", productHandler.GetAllProducts)
 		protected.GET("/api/products/{productID}", productHandler.GetProducts)
-		protected.POST("/api/products/bulk", productHandler.CreateMassProducts)
 
 		protected.POST("/api/orders", orderHandler.CreateOrders)
 

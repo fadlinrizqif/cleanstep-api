@@ -41,7 +41,6 @@ func (h *OrdersHandler) CreateOrders(c *gin.Context) {
 	}
 
 	var orderParams Params
-
 	// Bind json to the struct
 	if err := c.BindJSON(&orderParams); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -61,6 +60,7 @@ func (h *OrdersHandler) CreateOrders(c *gin.Context) {
 	qtx := h.App.DBqueries.WithTx(tx)
 
 	var totalPrice int32
+	priceList := make(map[uuid.UUID]int32)
 
 	for _, item := range orderParams.OrderItems {
 		//decrease the stock from db
@@ -75,6 +75,8 @@ func (h *OrdersHandler) CreateOrders(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+
+		priceList[product.ID] = product.Price
 
 		//sum up the price of each product's price times with order's quantity
 		totalPrice += product.Price * item.Quantity
@@ -100,6 +102,7 @@ func (h *OrdersHandler) CreateOrders(c *gin.Context) {
 			ProductID: item.ProductID,
 			OrderID:   newOrder.ID,
 			Quantity:  item.Quantity,
+			Price:     priceList[item.ProductID],
 		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
