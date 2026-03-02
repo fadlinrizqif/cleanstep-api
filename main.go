@@ -22,6 +22,9 @@ func main() {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
 	serverSecret := os.Getenv("SEVER_SECRET")
+	googleSecret := os.Getenv("GOOGLE_CLIENT_SECRET")
+	googleID := os.Getenv("GOOGLE_CLIENT_ID")
+	redirectURL := os.Getenv("GOOGLE_REDIRECT_URL")
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatal(err)
@@ -29,9 +32,12 @@ func main() {
 
 	dbQueries := database.New(db)
 	config := app.App{
-		DB:          db,
-		DBqueries:   dbQueries,
-		SeverSecret: serverSecret,
+		DB:           db,
+		DBqueries:    dbQueries,
+		SeverSecret:  serverSecret,
+		GoogleSecret: googleSecret,
+		GoogleID:     googleID,
+		RedirectURL:  redirectURL,
 	}
 
 	userHandler := handlers.NewUserHandler(&config)
@@ -41,6 +47,9 @@ func main() {
 	router.POST("/api/signup", userHandler.CreateUser)
 	router.POST("/api/login", userHandler.LoginUser)
 	router.GET("/api/logout", userHandler.LogoutUser)
+
+	router.GET("/auth/google/login", userHandler.OauthLogin)
+	router.GET("/auth/google/callback", userHandler.OauthCallback)
 
 	protected := router.Group("/")
 	protected.Use(middlware.AuthMiddleware(config.SeverSecret))
