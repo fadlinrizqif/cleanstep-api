@@ -118,7 +118,7 @@ func (h *OrdersHandler) CreateOrders(c *gin.Context) {
 	}
 
 	//send respond to the frontend
-	c.JSON(http.StatusOK, dto.OrderResponse{
+	c.JSON(http.StatusCreated, dto.OrderResponse{
 		ID:        newOrder.ID,
 		UserID:    userID,
 		Status:    newOrder.Status,

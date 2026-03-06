@@ -7,7 +7,10 @@ import (
 )
 
 type App struct {
-	DB          *sql.DB
-	DBqueries   *database.Queries
-	SeverSecret string
+	DB           *sql.DB
+	DBqueries    *database.Queries
+	SeverSecret  string
+	GoogleSecret string
+	GoogleID     string
+	RedirectURL  string
 }
