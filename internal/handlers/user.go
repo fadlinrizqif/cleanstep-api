@@ -55,6 +55,7 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		Name:           userDetail.Name,
 		Email:          userDetail.Email,
 		HashedPassword: hashedPassword,
+		Provider:       "manual",
 	})
 
 	if err != nil {
@@ -270,8 +271,9 @@ func (h *UserHandler) OauthCallback(c *gin.Context) {
 	getUser, err := h.App.DBqueries.GetUser(c.Request.Context(), userInfo.Email)
 	if err == sql.ErrNoRows {
 		getUser, err = h.App.DBqueries.CreateUser(c.Request.Context(), database.CreateUserParams{
-			Name:  userInfo.Name,
-			Email: userInfo.Email,
+			Name:     userInfo.Name,
+			Email:    userInfo.Email,
+			Provider: "google",
 		})
 
 		if err != nil {

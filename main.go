@@ -51,15 +51,15 @@ func main() {
 	router.GET("/auth/google/login", userHandler.OauthLogin)
 	router.GET("/auth/google/callback", userHandler.OauthCallback)
 
-	protected := router.Group("/")
+	protected := router.Group("/api")
 	protected.Use(middlware.AuthMiddleware(config.SeverSecret))
 	{
-		protected.POST("/api/admin/products", productHandler.CreateProducts)
-		protected.POST("/api/admin/products/bulk", productHandler.CreateMassProducts)
-		protected.GET("/api/products", productHandler.GetAllProducts)
-		protected.GET("/api/products/{productID}", productHandler.GetProducts)
+		protected.POST("/admin/products", productHandler.CreateProducts)
+		protected.POST("/admin/products/bulk", productHandler.CreateMassProducts)
+		protected.GET("/products", productHandler.GetAllProducts)
+		protected.GET("/products/{productID}", productHandler.GetProducts)
 
-		protected.POST("/api/orders", orderHandler.CreateOrders)
+		protected.POST("/orders", orderHandler.CreateOrders)
 
 	}
 
