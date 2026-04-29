@@ -1,9 +1,13 @@
 package dto
 
 import (
+	"context"
+	"database/sql"
 	"time"
 
+	"github.com/fadlinrizqif/cleanstep-api/internal/database"
 	"github.com/google/uuid"
+	"github.com/midtrans/midtrans-go/coreapi"
 )
 
 type UserDetail struct {
@@ -39,9 +43,37 @@ type GetProductResponse struct {
 	Total int32             `json:"total"`
 }
 
+type OrderDetail struct {
+	ProductID uuid.UUID `json:"product_id"`
+	Quantity  int32     `json:"quantity"`
+}
+
+type Params struct {
+	OrderItems []OrderDetail `json:"order_detail"`
+}
+
+type ReqOrderParams struct {
+	Ctx         context.Context
+	DB          *sql.DB
+	DBqueries   *database.Queries
+	OrderParams Params
+	UserId      uuid.UUID
+	MidtransKey string
+}
+
+type ActionUser struct {
+	Name   string   `json:"name"`
+	Method string   `json:"method"`
+	URL    string   `json:"url"`
+	Fields []string `json:"fields"`
+}
+
 type OrderResponse struct {
-	ID        uuid.UUID `json:"id"`
-	UserID    uuid.UUID `json:"user_id"`
-	Status    string    `json:"status"`
-	TotalItem int32     `json:"total_item"`
+	ID         string           `json:"id"`
+	UserID     uuid.UUID        `json:"user_id"`
+	Status     string           `json:"status"`
+	TotalItem  int32            `json:"total_item"`
+	Action     []coreapi.Action `json:"action"`
+	QrString   string           `json:"qr_string"`
+	ExpiryTime string           `json:"expiry_time"`
 }

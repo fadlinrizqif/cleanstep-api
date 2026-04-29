@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"strings"
 
 	//	"github.com/fadlinrizqif/cleanstep-api/internal/database"
+	"github.com/fadlinrizqif/cleanstep-api/internal/database"
 	"github.com/google/uuid"
 )
 
@@ -37,4 +39,16 @@ func validateCategory(category string) (string, error) {
 	}
 
 	return theCategory, nil
+}
+
+func UpdateDBOrder(dbQuery *database.Queries, ctx context.Context, status string, orderId uuid.UUID) error {
+	err := dbQuery.UpdateStatusOrder(ctx, database.UpdateStatusOrderParams{
+		Status: status,
+		ID:     orderId,
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

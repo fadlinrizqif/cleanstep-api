@@ -9,6 +9,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.11.1
+	github.com/midtrans/midtrans-go v1.3.8
 	golang.org/x/oauth2 v0.35.0
 )
 

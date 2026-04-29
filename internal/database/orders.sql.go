@@ -43,3 +43,19 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 	)
 	return i, err
 }
+
+const updateStatusOrder = `-- name: UpdateStatusOrder :exec
+UPDATE orders
+SET status = $1
+WHERE id = $2
+`
+
+type UpdateStatusOrderParams struct {
+	Status string
+	ID     uuid.UUID
+}
+
+func (q *Queries) UpdateStatusOrder(ctx context.Context, arg UpdateStatusOrderParams) error {
+	_, err := q.db.ExecContext(ctx, updateStatusOrder, arg.Status, arg.ID)
+	return err
+}
