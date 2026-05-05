@@ -28,3 +28,24 @@ func AuthMiddleware(sercretKey string) gin.HandlerFunc {
 
 	}
 }
+
+func AuthMidtrans() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var midtransKey struct {
+			SignatureKey string `json:"signature_key"`
+		}
+
+		if err := c.BindJSON(&midtransKey); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "wrong request"})
+			return
+		}
+
+		if midtransKey.SignatureKey == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+			return
+		}
+
+		c.Next()
+
+	}
+}

@@ -10,6 +10,9 @@ VALUES(
 )
 RETURNING *;
 
+-- name: GetOrderByID :one
+SELECT id, user_id, total_items FROM orders WHERE id = $1;
+
 -- name: UpdateStatusOrder :exec
 UPDATE orders
 SET status = $1

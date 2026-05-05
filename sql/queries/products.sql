@@ -13,7 +13,7 @@ VALUES(
 RETURNING *;
 
 -- name: GetProduct :one
-SELECT * FROM products WHERE id = $1;
+SELECT * FROM products WHERE id = $1 FOR UPDATE;
 
 -- name: GetAllProduct :many
 SELECT * FROM products
@@ -27,9 +27,11 @@ OFFSET @offset_val::int;
 -- name: GetAllPrice :many
 SELECT id, price, stock, name FROM products ORDER BY created_at ASC;
 
--- name: UpdateProduct :one
+-- name: UpdateProduct :many
 UPDATE products
-SET stock = stock - $1 
-WHERE stock >= $1 
-AND id = $2
+SET stock = stock - order_items.quantity
+FROM order_items
+WHERE order_items.order_id = $1 
+AND order_items.product_id = products.id
+AND stock >= order_items.quantity
 RETURNING *;

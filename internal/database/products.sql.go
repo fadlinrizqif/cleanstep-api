@@ -7,6 +7,7 @@ package database
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -150,7 +151,7 @@ func (q *Queries) GetAllProduct(ctx context.Context, arg GetAllProductParams) ([
 }
 
 const getProduct = `-- name: GetProduct :one
-SELECT id, created_at, updated_at, name, price, category, stock, description FROM products WHERE id = $1
+SELECT id, created_at, updated_at, name, price, category, stock, description FROM products WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetProduct(ctx context.Context, id uuid.UUID) (Product, error) {
@@ -169,31 +170,69 @@ func (q *Queries) GetProduct(ctx context.Context, id uuid.UUID) (Product, error)
 	return i, err
 }
 
-const updateProduct = `-- name: UpdateProduct :one
+const updateProduct = `-- name: UpdateProduct :many
 UPDATE products
-SET stock = stock - $1 
-WHERE stock >= $1 
-AND id = $2
-RETURNING id, created_at, updated_at, name, price, category, stock, description
+SET stock = stock - order_items.quantity
+FROM order_items
+WHERE order_items.order_id = $1 
+AND order_items.product_id = products.id
+AND stock >= order_items.quantity
+RETURNING order_items.id, order_items.created_at, order_items.updated_at, product_id, order_id, quantity, order_items.price, products.id, products.created_at, products.updated_at, name, products.price, category, stock, description
 `
 
-type UpdateProductParams struct {
-	Stock int32
-	ID    uuid.UUID
+type UpdateProductRow struct {
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	ProductID   uuid.UUID
+	OrderID     uuid.UUID
+	Quantity    int32
+	Price       int32
+	ID_2        uuid.UUID
+	CreatedAt_2 time.Time
+	UpdatedAt_2 time.Time
+	Name        string
+	Price_2     int32
+	Category    string
+	Stock       int32
+	Description string
 }
 
-func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (Product, error) {
-	row := q.db.QueryRowContext(ctx, updateProduct, arg.Stock, arg.ID)
-	var i Product
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Name,
-		&i.Price,
-		&i.Category,
-		&i.Stock,
-		&i.Description,
-	)
-	return i, err
+func (q *Queries) UpdateProduct(ctx context.Context, orderID uuid.UUID) ([]UpdateProductRow, error) {
+	rows, err := q.db.QueryContext(ctx, updateProduct, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UpdateProductRow
+	for rows.Next() {
+		var i UpdateProductRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ProductID,
+			&i.OrderID,
+			&i.Quantity,
+			&i.Price,
+			&i.ID_2,
+			&i.CreatedAt_2,
+			&i.UpdatedAt_2,
+			&i.Name,
+			&i.Price_2,
+			&i.Category,
+			&i.Stock,
+			&i.Description,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/fadlinrizqif/cleanstep-api/internal/database"
 	"github.com/fadlinrizqif/cleanstep-api/internal/handlers"
 	"github.com/fadlinrizqif/cleanstep-api/internal/middlware"
+	//"github.com/fadlinrizqif/cleanstep-api/internal/ws"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/midtrans/midtrans-go"
@@ -47,6 +48,9 @@ func main() {
 		time.Sleep(2 * time.Second)
 	}
 
+	//hub := ws.NewHub()
+	//go hub.Run()
+
 	dbQueries := database.New(db)
 	config := app.App{
 		DB:           db,
@@ -55,6 +59,8 @@ func main() {
 		GoogleSecret: googleSecret,
 		GoogleID:     googleID,
 		RedirectURL:  redirectURL,
+		MidtransKey:  midtransKey,
+		//Hub:          hub,
 	}
 
 	midtrans.ServerKey = midtransKey
@@ -80,9 +86,10 @@ func main() {
 		protected.GET("/products/{productID}", productHandler.GetProducts)
 
 		protected.POST("/orders", orderHandler.CreateOrders)
-		protected.POST("/orders/callback/webhook", orderHandler.NotificationUrl)
+		protected.GET("/orders/notification", orderHandler.NotificationToClient)
 
 	}
+	router.POST("/api/orders/callback/webhook", orderHandler.NotificationUrl)
 
 	router.Run(":8080")
 }
