@@ -11,7 +11,7 @@ import (
 	"github.com/fadlinrizqif/cleanstep-api/internal/database"
 	"github.com/fadlinrizqif/cleanstep-api/internal/handlers"
 	"github.com/fadlinrizqif/cleanstep-api/internal/middlware"
-	//"github.com/fadlinrizqif/cleanstep-api/internal/ws"
+	"github.com/fadlinrizqif/cleanstep-api/internal/ws"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/midtrans/midtrans-go"
@@ -40,7 +40,7 @@ func main() {
 	for i := range 5 {
 		err := db.Ping()
 		if err == nil {
-			fmt.Print("Connection to database success")
+			fmt.Println("Connection to database success")
 			break
 		}
 
@@ -48,8 +48,8 @@ func main() {
 		time.Sleep(2 * time.Second)
 	}
 
-	//hub := ws.NewHub()
-	//go hub.Run()
+	hub := ws.NewHub()
+	go hub.Run()
 
 	dbQueries := database.New(db)
 	config := app.App{
@@ -60,7 +60,7 @@ func main() {
 		GoogleID:     googleID,
 		RedirectURL:  redirectURL,
 		MidtransKey:  midtransKey,
-		//Hub:          hub,
+		Hub:          hub,
 	}
 
 	midtrans.ServerKey = midtransKey
@@ -78,7 +78,7 @@ func main() {
 	router.GET("/auth/google/callback", userHandler.OauthCallback)
 
 	protected := router.Group("/api")
-	protected.Use(middlware.AuthMiddleware(config.SeverSecret))
+	protected.Use(middlware.AuthMiddleware(&config))
 	{
 		protected.POST("/admin/products", productHandler.CreateProducts)
 		protected.POST("/admin/products/bulk", productHandler.CreateMassProducts)
@@ -86,7 +86,7 @@ func main() {
 		protected.GET("/products/{productID}", productHandler.GetProducts)
 
 		protected.POST("/orders", orderHandler.CreateOrders)
-		protected.GET("/orders/notification", orderHandler.NotificationToClient)
+		protected.GET("/ws/payment", orderHandler.NotificationToClient)
 
 	}
 	router.POST("/api/orders/callback/webhook", orderHandler.NotificationUrl)

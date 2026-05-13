@@ -1,7 +1,7 @@
 package service
 
 import (
-	"errors"
+	//"errors"
 
 	"github.com/fadlinrizqif/cleanstep-api/internal/database"
 	"github.com/fadlinrizqif/cleanstep-api/internal/dto"
@@ -37,13 +37,21 @@ func CreateNewOrder(orderReq dto.ReqOrderParams) (coreapi.ChargeResponse, error)
 	//this foor lop to accumulate total amount from client's order items
 	//and check the available stock from database
 	for _, item := range orderReq.OrderParams.OrderItems {
-		product, err := qtx.GetProduct(orderReq.Ctx, item.ProductID)
+		//product, err := qtx.GetProduct(orderReq.Ctx, item.ProductID)
+		//if err != nil {
+		//	return coreapi.ChargeResponse{}, err
+		//}
+
+		//if product.Stock < item.Quantity {
+		//	return coreapi.ChargeResponse{}, errors.New(product.Name + "out of stock")
+		//}
+		product, err := qtx.UpdateReservedStock(orderReq.Ctx, database.UpdateReservedStockParams{
+			StockReserved: item.Quantity,
+			ID:            item.ProductID,
+		})
+
 		if err != nil {
 			return coreapi.ChargeResponse{}, err
-		}
-
-		if product.Stock < item.Quantity {
-			return coreapi.ChargeResponse{}, errors.New(product.Name + "out of stock")
 		}
 
 		priceList[product.ID] = product.Price

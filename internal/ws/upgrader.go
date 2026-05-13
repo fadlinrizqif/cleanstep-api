@@ -23,7 +23,7 @@ type PaymentEvent struct {
 type Hub struct {
 	Clients map[uuid.UUID]*websocket.Conn
 	EventCh chan PaymentEvent
-	Mu      *sync.Mutex
+	Mu      sync.Mutex
 }
 
 func NewHub() *Hub {

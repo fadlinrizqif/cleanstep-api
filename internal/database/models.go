@@ -31,14 +31,15 @@ type OrderItem struct {
 }
 
 type Product struct {
-	ID          uuid.UUID
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	Name        string
-	Price       int32
-	Category    string
-	Stock       int32
-	Description string
+	ID            uuid.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	Name          string
+	Price         int32
+	Category      string
+	Stock         int32
+	Description   string
+	StockReserved int32
 }
 
 type RefreshToken struct {

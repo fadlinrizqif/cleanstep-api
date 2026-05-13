@@ -13,7 +13,7 @@ import (
 )
 
 const createProduct = `-- name: CreateProduct :one
-INSERT INTO products (id, created_at, updated_at, name, price, category, stock, description)
+INSERT INTO products (id, created_at, updated_at, name, price, category, stock, description,stock_reserved)
 VALUES(
   gen_random_uuid(),
   NOW(),
@@ -22,9 +22,10 @@ VALUES(
   $2,
   $3,
   $4,
-  $5
+  $5,
+  0
 )
-RETURNING id, created_at, updated_at, name, price, category, stock, description
+RETURNING id, created_at, updated_at, name, price, category, stock, description, stock_reserved
 `
 
 type CreateProductParams struct {
@@ -53,6 +54,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		&i.Category,
 		&i.Stock,
 		&i.Description,
+		&i.StockReserved,
 	)
 	return i, err
 }
@@ -97,7 +99,7 @@ func (q *Queries) GetAllPrice(ctx context.Context) ([]GetAllPriceRow, error) {
 }
 
 const getAllProduct = `-- name: GetAllProduct :many
-SELECT id, created_at, updated_at, name, price, category, stock, description FROM products
+SELECT id, created_at, updated_at, name, price, category, stock, description, stock_reserved FROM products
 WHERE 
   (name ILIKE '%' || $1::text || '%' OR $1::text = '') 
   AND (category = $2::text OR $2::text ='')
@@ -136,6 +138,7 @@ func (q *Queries) GetAllProduct(ctx context.Context, arg GetAllProductParams) ([
 			&i.Category,
 			&i.Stock,
 			&i.Description,
+			&i.StockReserved,
 		); err != nil {
 			return nil, err
 		}
@@ -151,7 +154,7 @@ func (q *Queries) GetAllProduct(ctx context.Context, arg GetAllProductParams) ([
 }
 
 const getProduct = `-- name: GetProduct :one
-SELECT id, created_at, updated_at, name, price, category, stock, description FROM products WHERE id = $1 FOR UPDATE
+SELECT id, created_at, updated_at, name, price, category, stock, description, stock_reserved FROM products WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetProduct(ctx context.Context, id uuid.UUID) (Product, error) {
@@ -166,36 +169,107 @@ func (q *Queries) GetProduct(ctx context.Context, id uuid.UUID) (Product, error)
 		&i.Category,
 		&i.Stock,
 		&i.Description,
+		&i.StockReserved,
 	)
 	return i, err
 }
 
-const updateProduct = `-- name: UpdateProduct :many
+const updateFailOrder = `-- name: UpdateFailOrder :many
 UPDATE products
-SET stock = stock - order_items.quantity
+SET stock_reserved = stock_reserved - order_items.quantity
 FROM order_items
 WHERE order_items.order_id = $1 
 AND order_items.product_id = products.id
 AND stock >= order_items.quantity
-RETURNING order_items.id, order_items.created_at, order_items.updated_at, product_id, order_id, quantity, order_items.price, products.id, products.created_at, products.updated_at, name, products.price, category, stock, description
+RETURNING order_items.id, order_items.created_at, order_items.updated_at, product_id, order_id, quantity, order_items.price, products.id, products.created_at, products.updated_at, name, products.price, category, stock, description, stock_reserved
+`
+
+type UpdateFailOrderRow struct {
+	ID            uuid.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	ProductID     uuid.UUID
+	OrderID       uuid.UUID
+	Quantity      int32
+	Price         int32
+	ID_2          uuid.UUID
+	CreatedAt_2   time.Time
+	UpdatedAt_2   time.Time
+	Name          string
+	Price_2       int32
+	Category      string
+	Stock         int32
+	Description   string
+	StockReserved int32
+}
+
+func (q *Queries) UpdateFailOrder(ctx context.Context, orderID uuid.UUID) ([]UpdateFailOrderRow, error) {
+	rows, err := q.db.QueryContext(ctx, updateFailOrder, orderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UpdateFailOrderRow
+	for rows.Next() {
+		var i UpdateFailOrderRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ProductID,
+			&i.OrderID,
+			&i.Quantity,
+			&i.Price,
+			&i.ID_2,
+			&i.CreatedAt_2,
+			&i.UpdatedAt_2,
+			&i.Name,
+			&i.Price_2,
+			&i.Category,
+			&i.Stock,
+			&i.Description,
+			&i.StockReserved,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateProduct = `-- name: UpdateProduct :many
+UPDATE products
+SET stock = stock - order_items.quantity, stock_reserved = stock_reserved - order_items.quantity
+FROM order_items
+WHERE order_items.order_id = $1 
+AND order_items.product_id = products.id
+AND stock >= order_items.quantity
+RETURNING order_items.id, order_items.created_at, order_items.updated_at, product_id, order_id, quantity, order_items.price, products.id, products.created_at, products.updated_at, name, products.price, category, stock, description, stock_reserved
 `
 
 type UpdateProductRow struct {
-	ID          uuid.UUID
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
-	ProductID   uuid.UUID
-	OrderID     uuid.UUID
-	Quantity    int32
-	Price       int32
-	ID_2        uuid.UUID
-	CreatedAt_2 time.Time
-	UpdatedAt_2 time.Time
-	Name        string
-	Price_2     int32
-	Category    string
-	Stock       int32
-	Description string
+	ID            uuid.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	ProductID     uuid.UUID
+	OrderID       uuid.UUID
+	Quantity      int32
+	Price         int32
+	ID_2          uuid.UUID
+	CreatedAt_2   time.Time
+	UpdatedAt_2   time.Time
+	Name          string
+	Price_2       int32
+	Category      string
+	Stock         int32
+	Description   string
+	StockReserved int32
 }
 
 func (q *Queries) UpdateProduct(ctx context.Context, orderID uuid.UUID) ([]UpdateProductRow, error) {
@@ -223,6 +297,7 @@ func (q *Queries) UpdateProduct(ctx context.Context, orderID uuid.UUID) ([]Updat
 			&i.Category,
 			&i.Stock,
 			&i.Description,
+			&i.StockReserved,
 		); err != nil {
 			return nil, err
 		}
@@ -235,4 +310,34 @@ func (q *Queries) UpdateProduct(ctx context.Context, orderID uuid.UUID) ([]Updat
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateReservedStock = `-- name: UpdateReservedStock :one
+UPDATE products
+SET stock_reserved = stock_reserved + $1
+WHERE id = $2
+AND stock >= (stock_reserved + $1)
+RETURNING id, created_at, updated_at, name, price, category, stock, description, stock_reserved
+`
+
+type UpdateReservedStockParams struct {
+	StockReserved int32
+	ID            uuid.UUID
+}
+
+func (q *Queries) UpdateReservedStock(ctx context.Context, arg UpdateReservedStockParams) (Product, error) {
+	row := q.db.QueryRowContext(ctx, updateReservedStock, arg.StockReserved, arg.ID)
+	var i Product
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Price,
+		&i.Category,
+		&i.Stock,
+		&i.Description,
+		&i.StockReserved,
+	)
+	return i, err
 }

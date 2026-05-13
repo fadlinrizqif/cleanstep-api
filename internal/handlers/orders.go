@@ -150,11 +150,19 @@ func (h *OrdersHandler) NotificationUrl(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "something wrong from database"})
 			return
 		}
+		_, errDB = h.App.DBqueries.UpdateProduct(c.Request.Context(), order.ID)
+		if errDB != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "something wrong from database"})
+		}
 	case "deny", "cancel", "expire":
 		err := UpdateDBOrder(h.App.DBqueries, c.Request.Context(), "FAILED", orderDBId)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "something wrong from database"})
 			return
+		}
+		_, errDB := h.App.DBqueries.UpdateFailOrder(c.Request.Context(), order.ID)
+		if errDB != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "something wrong from database"})
 		}
 	case "pending":
 		err := UpdateDBOrder(h.App.DBqueries, c.Request.Context(), "PENDING", orderDBId)
@@ -164,11 +172,12 @@ func (h *OrdersHandler) NotificationUrl(c *gin.Context) {
 		}
 	}
 
-	//h.App.Hub.EventCh <- ws.PaymentEvent{
-	//	OrderId: orderDBId,
-	//	UserId:  order.UserID,
-	//	Status:  transactionStatusResp.TransactionStatus,
-	//}
+	//send the data to the channel
+	h.App.Hub.EventCh <- ws.PaymentEvent{
+		OrderId: orderDBId,
+		UserId:  order.UserID,
+		Status:  transactionStatusResp.TransactionStatus,
+	}
 
 	//if transaction success no problem, send the status code to midtrans
 	c.JSON(http.StatusOK, "ok")
@@ -182,9 +191,11 @@ func (h *OrdersHandler) NotificationToClient(c *gin.Context) {
 		return
 	}
 
+	log.Printf("Hub: %v \n", h.App.Hub)
+
 	userID, _ := uuid.Parse(fmt.Sprint(val))
 
-	conn, err := ws.Upgrader.Upgrade(c.Writer, c.Request, c.Request.Header)
+	conn, err := ws.Upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "Connection failed"})
 		return
