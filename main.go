@@ -83,7 +83,7 @@ func main() {
 		protected.POST("/admin/products", productHandler.CreateProducts)
 		protected.POST("/admin/products/bulk", productHandler.CreateMassProducts)
 		protected.GET("/products", productHandler.GetAllProducts)
-		protected.GET("/products/{productID}", productHandler.GetProducts)
+		protected.GET("/products/:productID", productHandler.GetProducts)
 
 		protected.POST("/orders", orderHandler.CreateOrders)
 		protected.GET("/ws/payment", orderHandler.NotificationToClient)

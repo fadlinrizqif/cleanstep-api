@@ -152,13 +152,14 @@ func (h *ProductsHandler) GetAllProducts(c *gin.Context) {
 }
 
 func (h *ProductsHandler) GetProducts(c *gin.Context) {
-	productID, err := uuid.Parse(c.Request.PathValue("productID"))
+	productID, err := uuid.Parse(c.Param("productID"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 
 	getProduct, err := h.App.DBqueries.GetProduct(c.Request.Context(), productID)
 	if err != nil {
+		log.Println(err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 
