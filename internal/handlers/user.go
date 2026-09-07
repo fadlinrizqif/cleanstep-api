@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/fadlinrizqif/cleanstep-api/internal/database"
 	"github.com/fadlinrizqif/cleanstep-api/internal/dto"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 )
@@ -82,13 +84,13 @@ func (h *UserHandler) LoginUser(c *gin.Context) {
 	var LoginDetail params
 
 	if err := c.ShouldBindJSON(&LoginDetail); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "error di bindjson" + err.Error()})
 		return
 	}
 
 	getUser, err := h.App.DBqueries.GetUser(c.Request.Context(), LoginDetail.Email)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error di database" + err.Error()})
 		return
 	}
 
@@ -101,12 +103,13 @@ func (h *UserHandler) LoginUser(c *gin.Context) {
 	jwtDuration := time.Duration(60) * time.Minute
 	newJwt, err := auth.MakeJWT(getUser.ID, h.App.SeverSecret, jwtDuration)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error di jwt" + err.Error()})
+		return
 	}
 
 	getRefreshToken, err := auth.MakeRefreshToken()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error di refreshToken" + err.Error()})
 	}
 
 	_, err = h.App.DBqueries.CreateRefreshToken(c.Request.Context(), database.CreateRefreshTokenParams{
@@ -115,7 +118,7 @@ func (h *UserHandler) LoginUser(c *gin.Context) {
 		ExpiresAt: time.Now().AddDate(0, 0, 60),
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error di db token" + err.Error()})
 	}
 
 	header := c.Request.Header
@@ -328,6 +331,35 @@ func (h *UserHandler) OauthCallback(c *gin.Context) {
 		MaxAge:   60 * 60 * 24 * 60,
 	})
 
-	c.JSON(http.StatusOK, gin.H{"body": "login successfully"})
+	//c.JSON(http.StatusPermanentRedirect, gin.H{"body": "login successfully"})
+	c.Redirect(http.StatusPermanentRedirect, "http://localhost:3000/")
 
+}
+
+func (h *UserHandler) GetUserById(c *gin.Context) {
+	val, ok := c.Get("getUserID")
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	userId, err := uuid.Parse(fmt.Sprint(val))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Something wrong in server"})
+		return
+	}
+
+	getUser, err := h.App.DBqueries.GetUserById(c.Request.Context(), userId)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Something wrong in db"})
+		return
+	}
+
+	c.JSON(http.StatusOK, dto.CreateUser{
+		ID:        getUser.ID,
+		CreatedAt: getUser.CreatedAt,
+		UpdatedAt: getUser.UpdatedAt,
+		Name:      getUser.Name,
+		Email:     getUser.Email,
+	})
 }

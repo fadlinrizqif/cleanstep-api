@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
 
 type Order struct {
@@ -30,15 +31,36 @@ type OrderItem struct {
 	Price     int32
 }
 
-type Product struct {
+type Payment struct {
 	ID          uuid.UUID
+	OrderID     uuid.UUID
+	ExternalID  uuid.UUID
+	Method      string
+	Acquirer    string
+	Currency    string
+	Status      string
+	FraudStatus string
+	Amount      int32
+	QrString    string
+	UrlImage    string
+	Payload     pqtype.NullRawMessage
+	ExpireAt    sql.NullTime
+	PaidAt      sql.NullTime
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
-	Name        string
-	Price       int32
-	Category    string
-	Stock       int32
-	Description string
+}
+
+type Product struct {
+	ID            uuid.UUID
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
+	Name          string
+	Price         int32
+	Category      string
+	Stock         int32
+	Description   string
+	StockReserved int32
+	Features      pqtype.NullRawMessage
 }
 
 type RefreshToken struct {

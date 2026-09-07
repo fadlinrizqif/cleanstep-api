@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/alexedwards/argon2id"
+	"github.com/fadlinrizqif/cleanstep-api/internal/database"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
@@ -99,4 +101,13 @@ func GetBearerToken(headers http.Header) (string, error) {
 	sanitizeToken := strings.Replace(rawtoken, prefix, "", 1)
 
 	return sanitizeToken, nil
+}
+
+func ValidateRefreshToken(tokenString string, db *database.Queries, ctx context.Context) (uuid.UUID, error) {
+	UserID, err := db.GetRefreshToken(ctx, tokenString)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return UserID.UserID, nil
 }

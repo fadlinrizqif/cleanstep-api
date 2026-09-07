@@ -44,6 +44,23 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Order
 	return i, err
 }
 
+const getOrderByID = `-- name: GetOrderByID :one
+SELECT id, user_id, total_items FROM orders WHERE id = $1
+`
+
+type GetOrderByIDRow struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	TotalItems int32
+}
+
+func (q *Queries) GetOrderByID(ctx context.Context, id uuid.UUID) (GetOrderByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getOrderByID, id)
+	var i GetOrderByIDRow
+	err := row.Scan(&i.ID, &i.UserID, &i.TotalItems)
+	return i, err
+}
+
 const updateStatusOrder = `-- name: UpdateStatusOrder :exec
 UPDATE orders
 SET status = $1

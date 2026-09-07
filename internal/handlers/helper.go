@@ -2,12 +2,16 @@ package handlers
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"errors"
 	"strings"
+	"time"
 
 	//	"github.com/fadlinrizqif/cleanstep-api/internal/database"
 	"github.com/fadlinrizqif/cleanstep-api/internal/database"
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
 
 type orderDetail struct {
@@ -50,5 +54,36 @@ func UpdateDBOrder(dbQuery *database.Queries, ctx context.Context, status string
 		return err
 	}
 
+	timePayAt := sql.NullTime{}
+
+	if status == "SUCCESS" {
+		timePayAt = sql.NullTime{
+			Time:  time.Now(),
+			Valid: true,
+		}
+	}
+
+	errPayment := dbQuery.UpdatePayment(ctx, database.UpdatePaymentParams{
+		OrderID: orderId,
+		Status:  status,
+		PaidAt:  timePayAt,
+	})
+
+	if errPayment != nil {
+		return err
+	}
+
 	return nil
+}
+
+func UnmarshalFeatures(rawFeatures pqtype.NullRawMessage) (map[string]string, error) {
+	if !rawFeatures.Valid || len(rawFeatures.RawMessage) == 0 {
+		return make(map[string]string), nil
+	}
+	var featuresMap map[string]string
+	err := json.Unmarshal(rawFeatures.RawMessage, &featuresMap)
+	if err != nil {
+		return nil, err
+	}
+	return featuresMap, nil
 }
