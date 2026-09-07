@@ -19,8 +19,8 @@ SELECT * FROM products WHERE id = $1 FOR UPDATE;
 -- name: GetAllProduct :many
 SELECT * FROM products
 WHERE 
-  (name ILIKE '%' || @name::text || '%' OR @name::text = '') 
-  AND (category = @category::text OR @category::text ='')
+  (@name::text = '' OR name ILIKE '%' || @name::text || '%') 
+  AND (@category::text = '' OR category = @category::text)
 ORDER BY created_at ASC
 LIMIT @limit_val::int
 OFFSET @offset_val::int;

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -128,17 +129,29 @@ func (h *ProductsHandler) GetAllProducts(c *gin.Context) {
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		fmt.Println("something wrong in db")
+		fmt.Println(err)
+		return
 	}
 
 	var allProduct []dto.ProductResponse
 
 	for _, product := range getProducts {
+		valiFeatures, err := UnmarshalFeatures(product.Features)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			fmt.Println("something wrong in marshal")
+			fmt.Println(err)
+			return
+		}
 		allProduct = append(allProduct, dto.ProductResponse{
-			ID:       product.ID,
-			Name:     product.Name,
-			Category: product.Category,
-			Price:    product.Price,
-			Stock:    product.Stock,
+			ID:          product.ID,
+			Name:        product.Name,
+			Category:    product.Category,
+			Description: product.Description,
+			Features:    valiFeatures,
+			Price:       product.Price,
+			Stock:       product.Stock,
 		})
 	}
 

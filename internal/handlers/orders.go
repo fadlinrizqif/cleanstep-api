@@ -13,15 +13,18 @@ import (
 	"github.com/fadlinrizqif/cleanstep-api/internal/ws"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/midtrans/midtrans-go/coreapi"
 )
 
 type OrdersHandler struct {
-	App *app.App
+	App     *app.App
+	Service *service.OrderService
 }
 
-func NewOrdersHandler(app *app.App) *OrdersHandler {
-	return &OrdersHandler{App: app}
+func NewOrdersHandler(app *app.App, service *service.OrderService) *OrdersHandler {
+	return &OrdersHandler{
+		App:     app,
+		Service: service,
+	}
 }
 
 func (h *OrdersHandler) CreateOrders(c *gin.Context) {
@@ -55,7 +58,7 @@ func (h *OrdersHandler) CreateOrders(c *gin.Context) {
 	}
 
 	//this function create order to database and post order to midtrans
-	newOrder, err := service.CreateNewOrder(newReqOrder)
+	newOrder, err := h.Service.CreateNewOrder(newReqOrder)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "something wrong in server"})
 		log.Fatal(err)
@@ -87,6 +90,7 @@ func (h *OrdersHandler) NotificationUrl(c *gin.Context) {
 	//bind the json from midtrans to the notificationPaylod variable
 	if err := c.BindJSON(&notficationPayload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		fmt.Println("something wrong in bindJSON")
 		return
 	}
 
@@ -94,16 +98,22 @@ func (h *OrdersHandler) NotificationUrl(c *gin.Context) {
 	orderId, exists := notficationPayload["order_id"].(string)
 	if !exists {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "something wrong from midtrans server"})
+		fmt.Println("something in notfication Payload")
 		return
 	}
 
 	//parse from string to the UUID type
 	orderDBId, _ := uuid.Parse(orderId)
 
+	fmt.Println(orderId)
 	//check the transaction status
-	transactionStatusResp, err := coreapi.CheckTransaction(orderId)
+	transactionStatusResp, err := h.Service.Payment.CheckTransaction(orderId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "something wrong from midtrans server"})
+		fmt.Println("\n")
+		fmt.Println(transactionStatusResp)
+		fmt.Println(err)
+		fmt.Println("something wrong in checking transaction")
 		return
 	}
 
@@ -111,6 +121,7 @@ func (h *OrdersHandler) NotificationUrl(c *gin.Context) {
 	order, errDB := h.App.DBqueries.GetOrderByID(c.Request.Context(), orderDBId)
 	if errDB != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "order id not found"})
+		fmt.Println("something wrong in DB")
 		return
 	}
 
@@ -211,4 +222,23 @@ func (h *OrdersHandler) NotificationToClient(c *gin.Context) {
 			break
 		}
 	}
+}
+
+func (h *OrdersHandler) GetPayment(c *gin.Context) {
+	orderID, err := uuid.Parse(c.Param("orderID"))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
+
+	paymentData, err := h.App.DBqueries.GetPaymentById(c.Request.Context(), orderID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
+
+	c.JSON(http.StatusOK, dto.PaymentRespond{
+		QrString:   paymentData.QrString,
+		UrlImage:   paymentData.UrlImage,
+		ExpiryTime: paymentData.ExpireAt,
+	})
+
 }

@@ -3,11 +3,19 @@ package service
 import (
 	//"errors"
 
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"strconv"
+	"time"
+
+	"github.com/fadlinrizqif/cleanstep-api/internal/app"
 	"github.com/fadlinrizqif/cleanstep-api/internal/database"
 	"github.com/fadlinrizqif/cleanstep-api/internal/dto"
 	"github.com/google/uuid"
 	"github.com/midtrans/midtrans-go"
 	"github.com/midtrans/midtrans-go/coreapi"
+	"github.com/sqlc-dev/pqtype"
 )
 
 type OrderDetail struct {
@@ -19,7 +27,24 @@ type Params struct {
 	OrderItems []OrderDetail `json:"order_detail"`
 }
 
-func CreateNewOrder(orderReq dto.ReqOrderParams) (coreapi.ChargeResponse, error) {
+type PaymentGateway interface {
+	ChargeTransaction(req *coreapi.ChargeReq) (*coreapi.ChargeResponse, *midtrans.Error)
+	CheckTransaction(param string) (*coreapi.TransactionStatusResponse, *midtrans.Error)
+}
+
+type OrderService struct {
+	App     *app.App
+	Payment PaymentGateway
+}
+
+func NewOrderService(app *app.App, payment PaymentGateway) *OrderService {
+	return &OrderService{
+		App:     app,
+		Payment: payment,
+	}
+}
+
+func (s OrderService) CreateNewOrder(orderReq dto.ReqOrderParams) (coreapi.ChargeResponse, error) {
 
 	// begin the transaction
 	tx, err := orderReq.DB.Begin()
@@ -97,7 +122,64 @@ func CreateNewOrder(orderReq dto.ReqOrderParams) (coreapi.ChargeResponse, error)
 	}
 
 	//from midtrans varibale before put to he function to get the bill from midtrans
-	coreApiRes, _ := coreapi.ChargeTransaction(chargeReq)
+	coreApiRes, _ := s.Payment.ChargeTransaction(chargeReq)
+
+	orderId, err := uuid.Parse(fmt.Sprint(coreApiRes.OrderID))
+	if err != nil {
+		return coreapi.ChargeResponse{}, err
+	}
+
+	transactionId, err := uuid.Parse(fmt.Sprint(coreApiRes.OrderID))
+	if err != nil {
+		return coreapi.ChargeResponse{}, err
+	}
+
+	totalAmount, err := strconv.ParseFloat(coreApiRes.GrossAmount, 64)
+	if err != nil {
+		return coreapi.ChargeResponse{}, err
+	}
+
+	payloadByte, err := json.Marshal(coreApiRes)
+	if err != nil {
+		return coreapi.ChargeResponse{}, err
+	}
+
+	payloadJSON := pqtype.NullRawMessage{
+		RawMessage: json.RawMessage(payloadByte),
+		Valid:      true,
+	}
+
+	layout := "2006-01-02 15:04:05"
+	parsedTime, err := time.Parse(layout, coreApiRes.ExpiryTime)
+	if err != nil {
+		return coreapi.ChargeResponse{}, err
+	}
+
+	nullTime := sql.NullTime{
+		Time:  parsedTime,
+		Valid: true,
+	}
+
+	paymentParams := database.CreatePaymentParams{
+		OrderID:     orderId,
+		ExternalID:  transactionId,
+		Method:      coreApiRes.PaymentType,
+		Acquirer:    coreApiRes.Acquirer,
+		Currency:    coreApiRes.Currency,
+		Status:      coreApiRes.TransactionStatus,
+		FraudStatus: coreApiRes.FraudStatus,
+		Amount:      int32(totalAmount),
+		QrString:    coreApiRes.QRString,
+		UrlImage:    coreApiRes.Actions[0].URL,
+		Payload:     payloadJSON,
+		ExpireAt:    nullTime,
+	}
+
+	_, errPayment := s.App.DBqueries.CreatePayment(orderReq.Ctx, paymentParams)
+	if errPayment != nil {
+		return coreapi.ChargeResponse{}, err
+	}
+
 	return *coreApiRes, nil
 
 }

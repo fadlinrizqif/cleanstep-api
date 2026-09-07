@@ -31,11 +31,13 @@ type LoginUser struct {
 }
 
 type ProductResponse struct {
-	ID       uuid.UUID `json:"id"`
-	Name     string    `json:"name"`
-	Category string    `json:"category"`
-	Price    int32     `json:"price"`
-	Stock    int32     `json:"stock"`
+	ID          uuid.UUID         `json:"id"`
+	Name        string            `json:"name"`
+	Category    string            `json:"category"`
+	Description string            `json:"description"`
+	Features    map[string]string `json:"features"`
+	Price       int32             `json:"price"`
+	Stock       int32             `json:"stock"`
 }
 
 type GetProductResponse struct {
@@ -76,4 +78,10 @@ type OrderResponse struct {
 	Action     []coreapi.Action `json:"action"`
 	QrString   string           `json:"qr_string"`
 	ExpiryTime string           `json:"expiry_time"`
+}
+
+type PaymentRespond struct {
+	QrString   string       `json:"qr_string"`
+	UrlImage   string       `json:"url_image"`
+	ExpiryTime sql.NullTime `json:"expiry_time"`
 }

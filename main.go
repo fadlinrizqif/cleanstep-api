@@ -11,12 +11,16 @@ import (
 	"github.com/fadlinrizqif/cleanstep-api/internal/database"
 	"github.com/fadlinrizqif/cleanstep-api/internal/handlers"
 	"github.com/fadlinrizqif/cleanstep-api/internal/middlware"
+	"github.com/fadlinrizqif/cleanstep-api/internal/service"
 	"github.com/fadlinrizqif/cleanstep-api/internal/ws"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/midtrans/midtrans-go"
+	"github.com/midtrans/midtrans-go/coreapi"
 
-	_ "github.com/lib/pq"
+	//_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func main() {
@@ -30,7 +34,7 @@ func main() {
 	googleID := os.Getenv("GOOGLE_CLIENT_ID")
 	redirectURL := os.Getenv("GOOGLE_REDIRECT_URL")
 	midtransKey := os.Getenv("MIDTRANS_SERVER_KEY")
-	db, err := sql.Open("postgres", dbURL)
+	db, err := sql.Open("pgx", dbURL)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -63,12 +67,26 @@ func main() {
 		Hub:          hub,
 	}
 
-	midtrans.ServerKey = midtransKey
-	midtrans.Environment = midtrans.Sandbox
+	//midtrans.ServerKey = midtransKey
+	//midtrans.Environment = midtrans.Sandbox
+	fmt.Println(midtransKey)
+	c := coreapi.Client{}
+	c.New(midtransKey, midtrans.Sandbox)
+
+	serviceHandler := service.NewOrderService(&config, c)
 
 	userHandler := handlers.NewUserHandler(&config)
 	productHandler := handlers.NewProductsHandler(&config)
-	orderHandler := handlers.NewOrdersHandler(&config)
+	orderHandler := handlers.NewOrdersHandler(&config, serviceHandler)
+
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization", "Cookie"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	router.POST("/api/signup", userHandler.CreateUser)
 	router.POST("/api/login", userHandler.LoginUser)
@@ -77,15 +95,20 @@ func main() {
 	router.GET("/auth/google/login", userHandler.OauthLogin)
 	router.GET("/auth/google/callback", userHandler.OauthCallback)
 
+	router.GET("api/products", productHandler.GetAllProducts)
+
 	protected := router.Group("/api")
 	protected.Use(middlware.AuthMiddleware(&config))
 	{
-		protected.POST("/admin/products", productHandler.CreateProducts)
 		protected.POST("/admin/products/bulk", productHandler.CreateMassProducts)
-		protected.GET("/products", productHandler.GetAllProducts)
+		protected.POST("/admin/products", productHandler.CreateProducts)
 		protected.GET("/products/:productID", productHandler.GetProducts)
 
+		protected.GET("/users", userHandler.GetUserById)
+
 		protected.POST("/orders", orderHandler.CreateOrders)
+		protected.GET("/orders/:orderID", orderHandler.GetPayment)
+
 		protected.GET("/ws/payment", orderHandler.NotificationToClient)
 
 	}

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
 
 const createProduct = `-- name: CreateProduct :one
@@ -25,7 +26,7 @@ VALUES(
   $5,
   0
 )
-RETURNING id, created_at, updated_at, name, price, category, stock, description, stock_reserved
+RETURNING id, created_at, updated_at, name, price, category, stock, description, stock_reserved, features
 `
 
 type CreateProductParams struct {
@@ -55,6 +56,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (P
 		&i.Stock,
 		&i.Description,
 		&i.StockReserved,
+		&i.Features,
 	)
 	return i, err
 }
@@ -99,10 +101,10 @@ func (q *Queries) GetAllPrice(ctx context.Context) ([]GetAllPriceRow, error) {
 }
 
 const getAllProduct = `-- name: GetAllProduct :many
-SELECT id, created_at, updated_at, name, price, category, stock, description, stock_reserved FROM products
+SELECT id, created_at, updated_at, name, price, category, stock, description, stock_reserved, features FROM products
 WHERE 
-  (name ILIKE '%' || $1::text || '%' OR $1::text = '') 
-  AND (category = $2::text OR $2::text ='')
+  ($1::text = '' OR name ILIKE '%' || $1::text || '%') 
+  AND ($2::text = '' OR category = $2::text)
 ORDER BY created_at ASC
 LIMIT $4::int
 OFFSET $3::int
@@ -139,6 +141,7 @@ func (q *Queries) GetAllProduct(ctx context.Context, arg GetAllProductParams) ([
 			&i.Stock,
 			&i.Description,
 			&i.StockReserved,
+			&i.Features,
 		); err != nil {
 			return nil, err
 		}
@@ -154,7 +157,7 @@ func (q *Queries) GetAllProduct(ctx context.Context, arg GetAllProductParams) ([
 }
 
 const getProduct = `-- name: GetProduct :one
-SELECT id, created_at, updated_at, name, price, category, stock, description, stock_reserved FROM products WHERE id = $1 FOR UPDATE
+SELECT id, created_at, updated_at, name, price, category, stock, description, stock_reserved, features FROM products WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) GetProduct(ctx context.Context, id uuid.UUID) (Product, error) {
@@ -170,6 +173,7 @@ func (q *Queries) GetProduct(ctx context.Context, id uuid.UUID) (Product, error)
 		&i.Stock,
 		&i.Description,
 		&i.StockReserved,
+		&i.Features,
 	)
 	return i, err
 }
@@ -181,7 +185,7 @@ FROM order_items
 WHERE order_items.order_id = $1 
 AND order_items.product_id = products.id
 AND stock >= order_items.quantity
-RETURNING order_items.id, order_items.created_at, order_items.updated_at, product_id, order_id, quantity, order_items.price, products.id, products.created_at, products.updated_at, name, products.price, category, stock, description, stock_reserved
+RETURNING order_items.id, order_items.created_at, order_items.updated_at, product_id, order_id, quantity, order_items.price, products.id, products.created_at, products.updated_at, name, products.price, category, stock, description, stock_reserved, features
 `
 
 type UpdateFailOrderRow struct {
@@ -201,6 +205,7 @@ type UpdateFailOrderRow struct {
 	Stock         int32
 	Description   string
 	StockReserved int32
+	Features      pqtype.NullRawMessage
 }
 
 func (q *Queries) UpdateFailOrder(ctx context.Context, orderID uuid.UUID) ([]UpdateFailOrderRow, error) {
@@ -229,6 +234,7 @@ func (q *Queries) UpdateFailOrder(ctx context.Context, orderID uuid.UUID) ([]Upd
 			&i.Stock,
 			&i.Description,
 			&i.StockReserved,
+			&i.Features,
 		); err != nil {
 			return nil, err
 		}
@@ -250,7 +256,7 @@ FROM order_items
 WHERE order_items.order_id = $1 
 AND order_items.product_id = products.id
 AND stock >= order_items.quantity
-RETURNING order_items.id, order_items.created_at, order_items.updated_at, product_id, order_id, quantity, order_items.price, products.id, products.created_at, products.updated_at, name, products.price, category, stock, description, stock_reserved
+RETURNING order_items.id, order_items.created_at, order_items.updated_at, product_id, order_id, quantity, order_items.price, products.id, products.created_at, products.updated_at, name, products.price, category, stock, description, stock_reserved, features
 `
 
 type UpdateProductRow struct {
@@ -270,6 +276,7 @@ type UpdateProductRow struct {
 	Stock         int32
 	Description   string
 	StockReserved int32
+	Features      pqtype.NullRawMessage
 }
 
 func (q *Queries) UpdateProduct(ctx context.Context, orderID uuid.UUID) ([]UpdateProductRow, error) {
@@ -298,6 +305,7 @@ func (q *Queries) UpdateProduct(ctx context.Context, orderID uuid.UUID) ([]Updat
 			&i.Stock,
 			&i.Description,
 			&i.StockReserved,
+			&i.Features,
 		); err != nil {
 			return nil, err
 		}
@@ -317,7 +325,7 @@ UPDATE products
 SET stock_reserved = stock_reserved + $1
 WHERE id = $2
 AND stock >= (stock_reserved + $1)
-RETURNING id, created_at, updated_at, name, price, category, stock, description, stock_reserved
+RETURNING id, created_at, updated_at, name, price, category, stock, description, stock_reserved, features
 `
 
 type UpdateReservedStockParams struct {
@@ -338,6 +346,7 @@ func (q *Queries) UpdateReservedStock(ctx context.Context, arg UpdateReservedSto
 		&i.Stock,
 		&i.Description,
 		&i.StockReserved,
+		&i.Features,
 	)
 	return i, err
 }

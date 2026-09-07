@@ -14,7 +14,7 @@ func AuthMiddleware(app *app.App) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		getToken, err := c.Cookie("access_token")
 
-		if err == nil || getToken != "" {
+		if err != nil && getToken != "" {
 			userID, err := auth.ValidateJWT(getToken, app.SeverSecret)
 			if err != nil {
 				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
@@ -26,11 +26,9 @@ func AuthMiddleware(app *app.App) gin.HandlerFunc {
 		}
 
 		refreshToken, err := c.Cookie("refresh_token")
-		if err != nil || refreshToken == "" {
-			if err != nil {
-				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-				return
-			}
+		if err != nil && refreshToken == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			return
 		}
 
 		userID, err := auth.ValidateRefreshToken(refreshToken, app.DBqueries, c.Request.Context())
